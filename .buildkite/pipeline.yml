@@ -1,0 +1,58 @@
+# .buildkite/pipeline.yml
+
+env:
+  PYTHON_VERSION: "3.12"
+
+steps:
+  # ── Step 1: Lint check ──────────────────────────────
+  - label: ":magnifying_glass: Lint"
+    key: "lint"
+    command: |
+      echo "Running lint check..."
+      python -m py_compile hello.py
+      echo "Lint passed!"
+    agents:
+      queue: test-buildkite
+
+  # ── Step 2 & 3 run in parallel ──────────────────────
+  - label: ":python: Hello World"
+    key: "hello-world"
+    command: "python hello.py"
+    agents:
+      queue: test-buildkite
+
+  - label: ":python: Hello Buildkite"
+    key: "hello-buildkite"
+    command: "python hello.py Buildkite"
+    agents:
+      queue: test-buildkite
+
+  # ── Wait for above 3 steps to pass ──────────────────
+  - wait
+
+  # ── Step 4: Run tests ────────────────────────────────
+  - label: ":test_tube: Run Tests"
+    key: "tests"
+    command: |
+      echo "Installing pytest..."
+      pip install pytest --quiet
+      echo "Running tests..."
+      python -m pytest test_hello.py -v
+    agents:
+      queue: test-buildkite
+
+  # ── Wait for tests to pass ───────────────────────────
+  - wait
+
+  # ── Step 5: Final summary ────────────────────────────
+  - label: ":white_check_mark: All Done"
+    key: "summary"
+    command: |
+      echo "========================================="
+      echo "  All steps passed successfully!"
+      echo "  Branch: $BUILDKITE_BRANCH"
+      echo "  Build:  $BUILDKITE_BUILD_NUMBER"
+      echo "  Commit: $BUILDKITE_COMMIT"
+      echo "========================================="
+    agents:
+      queue: test-buildkite
